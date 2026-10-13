@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemeLab Oblak</title>
+<meta name="theme-color" content="#0b0d12">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#0b0d12;--s1:#12161e;--s2:#181d27;--line:#262c38;
+  --tx:#e9edf3;--tx2:#98a2b3;--mut:#667085;
+  --acc:#8b7cf6;--pos:#4ade80;--neg:#f87171;--warn:#f5b544;
+  --profit:#8b7cf6;--mirror:#c084fc;
+  --head:"Space Grotesk",Poppins,system-ui,sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 var(--body)}
+button,input,select{font:inherit;color:inherit}
+.hidden{display:none!important}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.mut{color:var(--mut)}
+a{color:var(--acc);text-decoration:none}
+
+/* prijava */
+#login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:20px}
+#login .card{width:100%;max-width:360px}
+.brand{font-family:var(--head);font-weight:600;font-size:22px;letter-spacing:-.01em}
+.brand i{font-style:normal;color:var(--acc)}
+label{display:block;font-size:12px;color:var(--tx2);margin:12px 0 4px}
+input,select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:42px}
+input:focus,select:focus{outline:2px solid var(--acc);outline-offset:-1px}
+.btn{background:var(--acc);color:#0b0d12;border:0;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer;min-height:42px}
+.btn.ghost{background:transparent;color:var(--tx);border:1px solid var(--line)}
+.btn.small{min-height:32px;padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.err{color:var(--neg);font-size:13px;margin-top:10px;min-height:1em}
+
+/* aplikacija */
+header{position:sticky;top:0;z-index:5;background:rgba(11,13,18,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar .brand{font-size:18px}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--tx2);white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--mut)}
+.pill.ok .dot{background:var(--pos)}.pill.bad{color:var(--neg);border-color:rgba(248,113,113,.4)}.pill.bad .dot{background:var(--neg)}
+.grow{flex:1}
+main{max-width:1200px;margin:0 auto;padding:16px}
+#alert{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);color:#fecaca;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px}
+.bot h3{margin:0 0 10px;font-family:var(--head);font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px}
+.bot h3 .sw{width:9px;height:9px;border-radius:50%}
+.bot .off{font-size:11px;color:var(--warn);border:1px solid rgba(245,181,68,.4);border-radius:999px;padding:0 8px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.tile small{display:block;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.tile b{font-family:var(--mono);font-weight:500;font-size:18px}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:14px;scrollbar-width:none}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;color:var(--tx2);cursor:pointer;white-space:nowrap;min-height:44px}
+.tabs button.on{color:var(--tx);border-bottom-color:var(--acc)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--s1)}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:9px 12px;border-top:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
+th{border-top:0;color:var(--mut);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+td.r,th.r{text-align:right}
+td.wrap{white-space:normal;min-width:220px;color:var(--tx2)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.tag i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.empty{padding:24px;text-align:center;color:var(--mut)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.row .grow{min-width:180px}
+.sum{color:var(--tx2);font-size:13px}
+.forms{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.forms .card h3{margin:0 0 4px;font-family:var(--head);font-size:16px}
+.hint{font-size:12px;color:var(--mut);margin-top:3px}
+.chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--tx)}
+.chk input{width:18px;height:18px;min-height:0}
+.ok-msg{color:var(--pos);font-size:13px;margin-left:8px}
+@media (max-width:600px){.bar{gap:8px}.tile b{font-size:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <form class="card" id="loginForm" autocomplete="on">
+    <div class="brand">MemeLab<i>.</i>oblak</div>
+    <p class="mut" style="margin:6px 0 0">Copy boti, ki tečejo 24/7. Samo demo.</p>
+    <label for="em">E-pošta</label>
+    <input id="em" type="email" required autocomplete="username">
+    <label for="pw">Geslo</label>
+    <input id="pw" type="password" required autocomplete="current-password">
+    <button class="btn" style="width:100%;margin-top:16px" type="submit">Prijava</button>
+    <div class="err" id="loginErr"></div>
+  </form>
+</section>
+
+<section id="app" class="hidden">
+  <header>
+    <div class="bar">
+      <div class="brand">MemeLab<i>.</i>oblak</div>
+      <span class="pill" id="health"><span class="dot"></span><span>preverjam ...</span></span>
+      <span class="pill num" id="solusd">SOL ...</span>
+      <span class="grow"></span>
+      <button class="btn ghost small" id="logout">Odjava</button>
+    </div>
+  </header>
+  <main>
+    <div id="alert" class="hidden"></div>
+    <div class="kpis" id="kpis"></div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="open" class="on">Odprte pozicije</button>
+      <button data-tab="hist">Zgodovina</button>
+      <button data-tab="sig">Signali</button>
+      <button data-tab="wal">Denarnice</button>
+      <button data-tab="set">Nastavitve</button>
+    </nav>
+    <div id="view"></div>
+  </main>
+</section>
+
+<script>
+// MemeLab Oblak B. Javni Supabase kljuc; skrivnosti ostanejo v Edge Functions.
+const SUPABASE_URL = "https://kvxpxyxnqxgztjhvcnrq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_4C9qMaU6cuGk_wgS8Vao8Q_JWYszmke";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const BOTS = { profit: { name: "Copy Profit", color: "var(--profit)" }, mirror: { name: "Copy Mirror", color: "var(--mirror)" } };
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = (v,d=2) => v==null || !Number.isFinite(Number(v)) ? "-" : Number(v).toLocaleString("sl-SI",{minimumFractionDigits:d,maximumFractionDigits:d});
+const sgn = (v,d=2) => (v>0?"+":"")+nf(v,d), cls = v => v>0?"pos":v<0?"neg":"";
+const short = a => a?a.slice(0,4)+"..."+a.slice(-4):"";
+const ts = t => t?new Date(t).toLocaleString("sl-SI",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"}):"-";
+const ago = t => {const s=(Date.now()-new Date(t).getTime())/1000;return s<60?Math.round(s)+" s":s<3600?Math.round(s/60)+" min":nf(s/3600,1)+" h"};
+const tag = bot => `<span class="tag"><i style="background:${BOTS[bot]?.color}"></i>${esc(BOTS[bot]?.name||bot)}</span>`;
+const coin = t => `<a href="https://dexscreener.com/solana/${esc(t.token)}" target="_blank" rel="noopener">${esc(t.symbol||short(t.token))}</a>`;
+const must = r => {if(r.error)throw r.error;return r.data||[]};
+let tab="open",labels={},timer=null,busy=false,solUsd=null;
+try{tab=localStorage.getItem("ml_tab")||"open"}catch{}
+const wname = w => esc(labels[w]||short(w));
+$("#loginForm").onsubmit=async e=>{e.preventDefault();$("#loginErr").textContent="";try{const{error}=await sb.auth.signInWithPassword({email:$("#em").value.trim(),password:$("#pw").value});if(error)throw error}catch(e){$("#loginErr").textContent="Prijava ni uspela: "+e.message}};
+$("#logout").onclick=()=>sb.auth.signOut();
+sb.auth.onAuthStateChange((_ev,session)=>{setTimeout(()=>session?start():stop(),0)});
+sb.auth.getSession().then(({data})=>data.session?start():stop());
+function stop(){clearInterval(timer);timer=null;$("#app").classList.add("hidden");$("#login").classList.remove("hidden")}
+function start(){if(timer)return;$("#login").classList.add("hidden");$("#app").classList.remove("hidden");document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));refresh(true);timer=setInterval(()=>{if(!document.hidden)refresh(false)},10000)}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&timer)refresh(false)});
+$("#tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;tab=b.dataset.tab;try{localStorage.setItem("ml_tab",tab)}catch{}document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));refresh(true)};
+function showAlert(msg){const a=$("#alert");a.textContent=msg||"";a.classList.toggle("hidden",!msg)}
+async function refresh(full){if(busy)return;busy=true;try{await Promise.all([loadHealth(),loadKpi(),loadLabels()]);if(full||["open","hist","sig"].includes(tab))await render()}catch(e){showAlert("Napaka pri branju: "+(e.message||e))}finally{busy=false}}
+async function loadLabels(){labels=Object.fromEntries(must(await sb.from("ml_wallets").select("wallet,label")).map(w=>[w.wallet,w.label]))}
+async function loadHealth(){
+ const r=await sb.from("ml_health").select("*").eq("key","senca").maybeSingle();if(r.error)throw r.error;
+ const d=r.data,h=$("#health");if(!d?.last_ok){h.className="pill bad";h.lastElementChild.textContent="bot se še ni oglasil";return}
+ const late=Date.now()-new Date(d.last_ok)>180000,info=d.info||{},warn=late||info.price_error;
+ h.className="pill "+(warn?"bad":"ok");h.lastElementChild.textContent=late?"bot stoji, krog pred "+ago(d.last_ok):info.price_error?"bot čaka na cene":"bot teče, krog pred "+ago(d.last_ok);
+ solUsd=info.sol_usd||solUsd;$("#solusd").textContent="SOL "+nf(solUsd)+" $";
+ const recent=d.last_err_at&&new Date(d.last_err_at)>new Date(d.last_ok);
+ showAlert(late?"Več kot 3 min brez kroga. Preveri SQL 4 in Logs.":info.price_error||recent?info.price_error||d.last_err:(info.pending||info.inbox_pending)?`V vrsti: ${info.inbox_pending||0} dogodkov za dekodiranje in ${info.pending||0} signalov za izvedbo. Zelena pilula potrjuje krog, ne popolnosti kopiranja.`:"");
+}
+async function loadKpi(){
+ const data=must(await sb.rpc("ml_kpi")),settings=must(await sb.from("ml_settings").select("bot,enabled")),en=Object.fromEntries(settings.map(s=>[s.bot,s.enabled]));
+ $("#kpis").innerHTML=data.sort((a,b)=>(a.bot==='profit'?-1:1)-(b.bot==='profit'?-1:1)).map(k=>`<div class="card bot"><h3>${tag(k.bot)}${en[k.bot]===false?'<span class="off">novi nakupi ustavljeni</span>':''}</h3><div class="tiles">
+ <div class="tile"><small>Portfelj, ocena pred prodajnimi stroški</small><b>${nf(k.equity_usd)} $</b><span class="mut" style="display:block">${nf(solUsd?k.equity_usd/solUsd:null,3)} SOL po trenutnem tečaju</span></div>
+ <div class="tile"><small>Danes realizirano</small><b class="${cls(k.today_usd)}">${sgn(k.today_usd)} $</b></div>
+ <div class="tile"><small>Odprte</small><b>${k.open_n}</b></div><div class="tile"><small>Prost denar</small><b>${nf(k.cash_usd)} $</b></div></div>
+ <p class="hint">7 dni realizirano: ${sgn(k.pnl7)} $. Zaprtih: ${k.closed7}, dobitnih: ${k.closed7?nf(k.wins7/k.closed7*100,0)+' %':'-'}. ${k.stale_n?'<span class="neg">'+k.stale_n+' pozicij nima cene iz zadnjih 90 s.</span>':''}</p></div>`).join("")||'<div class="card">Začetni računi še niso ustvarjeni. Preveri SQL 2.</div>';
+}
+async function render(){const v=$("#view");if(tab==='open')v.innerHTML=await viewOpen();else if(tab==='hist')v.innerHTML=await viewHist();else if(tab==='sig')v.innerHTML=await viewSig();else if(tab==='wal'){v.innerHTML=await viewWal();bindWal()}else if(tab==='set'){v.innerHTML=await viewSet();bindSet()}}
+async function allOpen(){const all=[];for(let page=0;;page+=1000){const rows=must(await sb.from("ml_trades").select("*").is("closed_at",null).order("id").range(page,page+999));all.push(...rows);if(rows.length<1000)return all}}
+async function viewOpen(){
+ const data=await allOpen();if(!data.length)return '<div class="card empty">Ni odprtih pozicij.</div>';
+ const rows=data.reverse().map(t=>{const rem=t.qty/t.original_qty*100,stale=Date.now()-new Date(t.last_t)>90000;return `<tr><td>${tag(t.bot)}</td><td>${coin(t)}</td><td>${wname(t.wallet)}</td><td class="r ${stale?'mut':cls(t.net_pct)}">${sgn(t.net_pct)} %${stale?' (stara cena)':''}</td><td class="r ${cls(t.realized_usd)}">${sgn(t.realized_usd)} $</td><td class="r">${nf(rem,1)} %</td><td class="r">${nf(t.initial_cost_usd)} $</td><td class="r">${ago(t.opened_at)}</td><td class="r">${nf(t.lag_s,1)} s</td><td class="r ${stale?'neg':'mut'}">${ago(t.last_t)}</td></tr>`}).join('');
+ return `<p class="sum">${data.length} odprtih lotov. Celoten neto rezultat vključuje realizirane dele in ocenjeno prodajo preostanka. Cene so ocene iz Jupiter Price API; demo ni dejanska izvršitev na DEX.</p><div class="tbl"><table><thead><tr><th>Bot</th><th>Kovanec</th><th>Denarnica</th><th class="r">Celoten neto posel</th><th class="r">Že realizirano</th><th class="r">Preostanek</th><th class="r">Začetni strošek</th><th class="r">Držim</th><th class="r">Zamik</th><th class="r">Cena prebrana</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+async function viewHist(){
+ const fills=must(await sb.from("ml_fills").select("*").order("id",{ascending:false}).limit(200));if(!fills.length)return '<div class="card empty">Še ni prodaj.</div>';
+ const ids=[...new Set(fills.map(f=>f.trade_id))],tr=must(await sb.from("ml_trades").select("id,token,symbol,wallet").in("id",ids)),map=Object.fromEntries(tr.map(t=>[t.id,t]));
+ const rows=fills.map(f=>`<tr><td>${ts(f.t)}</td><td>${tag(f.bot)}</td><td>${coin(map[f.trade_id]||{})}</td><td>${wname(map[f.trade_id]?.wallet)}</td><td class="r ${cls(f.pnl_usd)}">${sgn(f.pnl_usd)} $</td><td>${esc(f.reason)}</td></tr>`).join('');
+ return `<p class="sum">Zadnjih ${fills.length} prodaj, tudi delnih. Realizirani rezultat po ocenjenih stroških.</p><div class="tbl"><table><thead><tr><th>Čas</th><th>Bot</th><th>Kovanec</th><th>Denarnica</th><th class="r">Rezultat dela</th><th>Razlog</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+async function viewSig(){
+ const sigs=must(await sb.from("ml_signals").select("*").order("id",{ascending:false}).limit(80)),inbox=must(await sb.from("ml_inbox").select("sig,t,status,last_error,attempts,processed_at").order("id",{ascending:false}).limit(30));
+ const ids=sigs.map(s=>s.id);let tr=[],sk=[],fills=[];
+ if(ids.length){[tr,sk,fills]=await Promise.all([sb.from('ml_trades').select('signal_id,bot').in('signal_id',ids),sb.from('ml_skips').select('signal_id,bot,reason').in('signal_id',ids),sb.from('ml_fills').select('signal_id,bot,reason').in('signal_id',ids)]).then(rs=>rs.map(must))}
+ const state=s=>{const messages=[...tr.filter(t=>t.signal_id===s.id).map(t=>BOTS[t.bot].name+': kupil'),...sk.filter(k=>k.signal_id===s.id).map(k=>BOTS[k.bot].name+': '+k.reason),...fills.filter(f=>f.signal_id===s.id).map(f=>BOTS[f.bot].name+': '+f.reason)];if(s.side==='sell'&&s.processed_at&&!messages.length)messages.push('Prodaja obdelana, brez odprtega povezanega Mirror lota');return esc(messages.join(' | ')|| (s.processed_at?'obdelano':'Čaka na ceno/denar ali prejšnji dogodek denarnice'))};
+ const rows=sigs.map(s=>`<tr><td>${ts(s.t)}</td><td>${s.side==='buy'?'nakup':'prodaja '+nf(s.sell_fraction*100,2)+' %'}</td><td>${coin(s)}</td><td>${wname(s.wallet)}</td><td class="wrap">${state(s)}</td></tr>`).join('');
+ const diag=inbox.filter(i=>i.last_error||!i.processed_at).map(i=>`<li>${ts(i.t)}: ${esc(i.status)}${i.last_error?', '+esc(i.last_error):''} (poskusov ${i.attempts})</li>`).join('');
+ return `<div class="tbl"><table><thead><tr><th>Čas vira</th><th>Dogodek</th><th>Kovanec</th><th>Denarnica</th><th>Izvedba</th></tr></thead><tbody>${rows||'<tr><td colspan="5">Še ni prepoznanih signalov.</td></tr>'}</tbody></table></div>${diag?'<div class="card" style="margin-top:12px"><b>Zajem: zadnji čakajoči ali nepodprti dogodki</b><ul>'+diag+'</ul></div>':''}`;
+}
+async function viewWal(){
+ const ws=must(await sb.from('ml_wallets').select('*').order('added_at'));
+ return `<form class="row" id="walForm"><input class="grow" id="wAddr" placeholder="Naslov denarnice" required><input id="wLab" placeholder="Oznaka" style="max-width:200px"><button class="btn">Dodaj</button></form><p class="sum" id="walMsg">Ustavi prepreči nove nakupe. Prodaje odprtih povezanih pozicij spremljamo naprej.</p><div class="tbl"><table><thead><tr><th>Oznaka</th><th>Naslov</th><th>Novi nakupi</th><th></th></tr></thead><tbody>${ws.map(w=>`<tr><td>${esc(w.label)}</td><td>${esc(w.wallet)}</td><td>${w.active?'vklopljeni':'ustavljeni'}</td><td><button class="btn ghost small" data-tog="${esc(w.wallet)}" data-act="${w.active?'0':'1'}">${w.active?'Ustavi':'Vklopi'}</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+async function syncHelius(msg){msg.textContent='Posodabljam Helius ...';try{const{data,error}=await sb.functions.invoke('ml-zajem',{body:{setup:true}});if(error||!data?.ok)throw new Error(error?.message||data?.error||'napaka');msg.textContent=`Helius posodobljen: ${data.wallets} spremljanih denarnic.`}catch(e){msg.textContent='Helius ni posodobljen: '+e.message}}
+function bindWal(){
+ const msg=$('#walMsg');$('#walForm').onsubmit=async e=>{e.preventDefault();try{const wallet=$('#wAddr').value.trim(),label=$('#wLab').value.trim()||null;if(!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet))throw new Error('Neveljaven Solana naslov');must(await sb.from('ml_wallets').upsert({wallet,label,active:true,added_at:new Date().toISOString()}));await render();await syncHelius($('#walMsg'))}catch(e){msg.textContent=e.message}};
+ $('#view').querySelectorAll('[data-tog]').forEach(b=>b.onclick=async()=>{try{must(await sb.from('ml_wallets').update({active:b.dataset.act==='1',...(b.dataset.act==='1'?{added_at:new Date().toISOString()}:{})}).eq('wallet',b.dataset.tog));await render();await syncHelius($('#walMsg'))}catch(e){msg.textContent=e.message}});
+}
+async function viewSet(){
+ const data=must(await sb.from('ml_settings').select('*').order('bot',{ascending:false}));
+ return `<div class="forms">${data.map(s=>`<form class="card" data-bot="${s.bot}"><h3>${tag(s.bot)}</h3><label class="chk"><input name="enabled" type="checkbox" ${s.enabled?'checked':''}> Novi nakupi vklopljeni</label><p class="hint">Odprte pozicije še spremljamo, tudi ko ustaviš nove nakupe.</p><label>Ciljni vložek (SOL)</label><input name="stake_sol" inputmode="decimal" value="${s.stake_sol}"><p class="hint">Pravilo A: največ 10 % prostega demo denarja skupaj s stroški, do tega ciljnega vložka.</p><p>${s.bot==='profit'?'Stop −10 % neto celotnega posla. Pri +30/+40/+50/+80 % prodamo po 25 % začetne količine. Brez trailing in runnerja.':'Prodaje po deležu izvorne denarnice. Brez lastnega stopa, cilja ali časovnega izstopa.'}</p><p class="hint">Začetek: ${nf(s.start_balance_usd)} USD, ločen nov račun. Ocenjeni stroški: provizija ${nf(s.fee_pct)} %, zdrs ${nf(s.slip_pct)} % na stran, omrežnina ${nf(s.network_fee_sol,5)} SOL na izvedbo.</p><button class="btn">Shrani</button><span class="ok-msg"></span></form>`).join('')}</div>`;
+}
+function bindSet(){$('#view').querySelectorAll('form[data-bot]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const msg=f.querySelector('.ok-msg');try{const stake=Number(f.elements.stake_sol.value.trim().replace(',','.'));if(!Number.isFinite(stake)||stake<=0)throw new Error('Vložek mora biti pozitiven');must(await sb.from('ml_settings').update({enabled:f.elements.enabled.checked,stake_sol:stake,updated_at:new Date().toISOString()}).eq('bot',f.dataset.bot));msg.textContent='Shranjeno. Obstoječi posli ohranijo izhodna pravila.'}catch(e){msg.textContent=e.message}})}
+
+</script>
+</body>
+</html>
