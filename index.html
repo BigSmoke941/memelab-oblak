@@ -146,14 +146,14 @@ $("#logout").onclick=()=>sb.auth.signOut();
 sb.auth.onAuthStateChange((_ev,session)=>{setTimeout(()=>session?start():stop(),0)});
 sb.auth.getSession().then(({data})=>data.session?start():stop());
 function stop(){clearInterval(timer);timer=null;$("#app").classList.add("hidden");$("#login").classList.remove("hidden")}
-function start(){if(timer)return;$("#login").classList.add("hidden");$("#app").classList.remove("hidden");document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));refresh(true);timer=setInterval(()=>{if(!document.hidden)refresh(false)},10000)}
+function start(){if(timer)return;$("#login").classList.add("hidden");$("#app").classList.remove("hidden");document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));refresh(true);timer=setInterval(()=>{if(!document.hidden)refresh(false)},30000)}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&timer)refresh(false)});
 $("#tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;tab=b.dataset.tab;try{localStorage.setItem("ml_tab",tab)}catch{}document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));refresh(true)};
 function showAlert(msg){const a=$("#alert");a.textContent=msg||"";a.classList.toggle("hidden",!msg)}
 async function refresh(full){if(busy)return;busy=true;try{await Promise.all([loadHealth(),loadKpi(),loadLabels()]);if(full||["open","hist","sig"].includes(tab))await render()}catch(e){showAlert("Napaka pri branju: "+(e.message||e))}finally{busy=false}}
 async function loadLabels(){labels=Object.fromEntries(must(await sb.from("ml_wallets").select("wallet,label")).map(w=>[w.wallet,w.label]))}
 async function loadHealth(){
- const r=await sb.from("ml_health").select("*").eq("key","senca").maybeSingle();if(r.error)throw r.error;
+ const r=await sb.from("ml_health").select("last_ok,last_err,last_err_at,info").eq("key","senca").maybeSingle();if(r.error)throw r.error;
  const d=r.data,h=$("#health");if(!d?.last_ok){h.className="pill bad";h.lastElementChild.textContent="bot se še ni oglasil";return}
  const late=Date.now()-new Date(d.last_ok)>180000,info=d.info||{},warn=late||info.price_error;
  h.className="pill "+(warn?"bad":"ok");h.lastElementChild.textContent=late?"bot stoji, krog pred "+ago(d.last_ok):info.price_error?"bot čaka na cene":"bot teče, krog pred "+ago(d.last_ok);
@@ -170,20 +170,20 @@ async function loadKpi(){
  <p class="hint">7 dni realizirano: ${sgn(k.pnl7)} $. Zaprtih: ${k.closed7}, dobitnih: ${k.closed7?nf(k.wins7/k.closed7*100,0)+' %':'-'}. ${k.stale_n?'<span class="neg">'+k.stale_n+' pozicij nima cene iz zadnjih 90 s.</span>':''}</p></div>`).join("")||'<div class="card">Začetni računi še niso ustvarjeni. Preveri SQL 2.</div>';
 }
 async function render(){const v=$("#view");if(tab==='open')v.innerHTML=await viewOpen();else if(tab==='hist')v.innerHTML=await viewHist();else if(tab==='sig')v.innerHTML=await viewSig();else if(tab==='wal'){v.innerHTML=await viewWal();bindWal()}else if(tab==='set'){v.innerHTML=await viewSet();bindSet()}}
-async function allOpen(){const all=[];for(let page=0;;page+=1000){const rows=must(await sb.from("ml_trades").select("*").is("closed_at",null).order("id").range(page,page+999));all.push(...rows);if(rows.length<1000)return all}}
+async function allOpen(){const all=[];for(let page=0;;page+=1000){const rows=must(await sb.from("ml_trades").select("id,bot,token,symbol,wallet,qty,original_qty,net_pct,realized_usd,initial_cost_usd,opened_at,last_t,lag_s").is("closed_at",null).order("id").range(page,page+999));all.push(...rows);if(rows.length<1000)return all}}
 async function viewOpen(){
  const data=await allOpen();if(!data.length)return '<div class="card empty">Ni odprtih pozicij.</div>';
  const rows=data.reverse().map(t=>{const rem=t.qty/t.original_qty*100,stale=Date.now()-new Date(t.last_t)>90000;return `<tr><td>${tag(t.bot)}</td><td>${coin(t)}</td><td>${wname(t.wallet)}</td><td class="r ${stale?'mut':cls(t.net_pct)}">${sgn(t.net_pct)} %${stale?' (stara cena)':''}</td><td class="r ${cls(t.realized_usd)}">${sgn(t.realized_usd)} $</td><td class="r">${nf(rem,1)} %</td><td class="r">${nf(t.initial_cost_usd)} $</td><td class="r">${ago(t.opened_at)}</td><td class="r">${nf(t.lag_s,1)} s</td><td class="r ${stale?'neg':'mut'}">${ago(t.last_t)}</td></tr>`}).join('');
  return `<p class="sum">${data.length} odprtih lotov. Celoten neto rezultat vključuje realizirane dele in ocenjeno prodajo preostanka. Cene so ocene iz Jupiter Price API; demo ni dejanska izvršitev na DEX.</p><div class="tbl"><table><thead><tr><th>Bot</th><th>Kovanec</th><th>Denarnica</th><th class="r">Celoten neto posel</th><th class="r">Že realizirano</th><th class="r">Preostanek</th><th class="r">Začetni strošek</th><th class="r">Držim</th><th class="r">Zamik</th><th class="r">Cena prebrana</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 async function viewHist(){
- const fills=must(await sb.from("ml_fills").select("*").order("id",{ascending:false}).limit(200));if(!fills.length)return '<div class="card empty">Še ni prodaj.</div>';
+ const fills=must(await sb.from("ml_fills").select("id,trade_id,bot,t,pnl_usd,reason").order("id",{ascending:false}).limit(200));if(!fills.length)return '<div class="card empty">Še ni prodaj.</div>';
  const ids=[...new Set(fills.map(f=>f.trade_id))],tr=must(await sb.from("ml_trades").select("id,token,symbol,wallet").in("id",ids)),map=Object.fromEntries(tr.map(t=>[t.id,t]));
  const rows=fills.map(f=>`<tr><td>${ts(f.t)}</td><td>${tag(f.bot)}</td><td>${coin(map[f.trade_id]||{})}</td><td>${wname(map[f.trade_id]?.wallet)}</td><td class="r ${cls(f.pnl_usd)}">${sgn(f.pnl_usd)} $</td><td>${esc(f.reason)}</td></tr>`).join('');
  return `<p class="sum">Zadnjih ${fills.length} prodaj, tudi delnih. Realizirani rezultat po ocenjenih stroških.</p><div class="tbl"><table><thead><tr><th>Čas</th><th>Bot</th><th>Kovanec</th><th>Denarnica</th><th class="r">Rezultat dela</th><th>Razlog</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 async function viewSig(){
- const sigs=must(await sb.from("ml_signals").select("*").order("id",{ascending:false}).limit(80)),inbox=must(await sb.from("ml_inbox").select("sig,t,status,last_error,attempts,processed_at").order("id",{ascending:false}).limit(30));
+ const sigs=must(await sb.from("ml_signals").select("id,t,side,token,wallet,processed_at,sell_fraction").order("id",{ascending:false}).limit(80)),inbox=must(await sb.from("ml_inbox").select("sig,t,status,last_error,attempts,processed_at").order("id",{ascending:false}).limit(30));
  const ids=sigs.map(s=>s.id);let tr=[],sk=[],fills=[];
  if(ids.length){[tr,sk,fills]=await Promise.all([sb.from('ml_trades').select('signal_id,bot').in('signal_id',ids),sb.from('ml_skips').select('signal_id,bot,reason').in('signal_id',ids),sb.from('ml_fills').select('signal_id,bot,reason').in('signal_id',ids)]).then(rs=>rs.map(must))}
  const state=s=>{const messages=[...tr.filter(t=>t.signal_id===s.id).map(t=>BOTS[t.bot].name+': kupil'),...sk.filter(k=>k.signal_id===s.id).map(k=>BOTS[k.bot].name+': '+k.reason),...fills.filter(f=>f.signal_id===s.id).map(f=>BOTS[f.bot].name+': '+f.reason)];if(s.side==='sell'&&s.processed_at&&!messages.length)messages.push('Prodaja obdelana, brez odprtega povezanega Mirror lota');return esc(messages.join(' | ')|| (s.processed_at?'obdelano':'Čaka na ceno/denar ali prejšnji dogodek denarnice'))};
@@ -205,7 +205,6 @@ async function viewSet(){
  return `<div class="forms">${data.map(s=>`<form class="card" data-bot="${s.bot}"><h3>${tag(s.bot)}</h3><label class="chk"><input name="enabled" type="checkbox" ${s.enabled?'checked':''}> Novi nakupi vklopljeni</label><p class="hint">Odprte pozicije še spremljamo, tudi ko ustaviš nove nakupe.</p><label>Ciljni vložek (SOL)</label><input name="stake_sol" inputmode="decimal" value="${s.stake_sol}"><p class="hint">Pravilo A: največ 10 % prostega demo denarja skupaj s stroški, do tega ciljnega vložka.</p><p>${s.bot==='profit'?'Stop −10 % neto celotnega posla. Pri +30/+40/+50/+80 % prodamo po 25 % začetne količine. Brez trailing in runnerja.':'Prodaje po deležu izvorne denarnice. Brez lastnega stopa, cilja ali časovnega izstopa.'}</p><p class="hint">Začetek: ${nf(s.start_balance_usd)} USD, ločen nov račun. Ocenjeni stroški: provizija ${nf(s.fee_pct)} %, zdrs ${nf(s.slip_pct)} % na stran, omrežnina ${nf(s.network_fee_sol,5)} SOL na izvedbo.</p><button class="btn">Shrani</button><span class="ok-msg"></span></form>`).join('')}</div>`;
 }
 function bindSet(){$('#view').querySelectorAll('form[data-bot]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const msg=f.querySelector('.ok-msg');try{const stake=Number(f.elements.stake_sol.value.trim().replace(',','.'));if(!Number.isFinite(stake)||stake<=0)throw new Error('Vložek mora biti pozitiven');must(await sb.from('ml_settings').update({enabled:f.elements.enabled.checked,stake_sol:stake,updated_at:new Date().toISOString()}).eq('bot',f.dataset.bot));msg.textContent='Shranjeno. Obstoječi posli ohranijo izhodna pravila.'}catch(e){msg.textContent=e.message}})}
-
 </script>
 </body>
 </html>
